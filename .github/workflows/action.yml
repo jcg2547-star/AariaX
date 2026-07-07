@@ -1,0 +1,58 @@
+name: Test Browser Headful
+
+on:
+  workflow_dispatch:
+    inputs:
+        login-only:
+          type: boolean
+          default: false
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out browser script
+        uses: actions/checkout@v4
+        with:
+          repository: 'AariaX/Microsoft-Rewards-Script'
+          ref: 'v4'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Create accounts.json from secret 📝
+        run: |
+          cat << 'EOF' > .env
+          ${{ secrets.ACCOUNTS }}
+          EOF
+
+      - name: Modify config.json ⚙️
+        run: |
+          cat << 'EOF' > src/config.json
+          ${{ secrets.CONFIG }}
+          EOF
+
+      - name: Install dependencies
+        run: npm i
+
+      - name: Install Playwright Browsers & Dependencies 🌐
+        run: npx patchright install chromium-headless-shell --with-deps
+
+      - name: Build the project 🏗️
+        run: npm run build
+
+      - name: Cache and Restore Sessions 💾
+        uses: actions/cache@v6
+        with:
+          path: sessions/sessions.db
+          key: ${{ runner.os }}-sessions
+
+      - name: Start the test 🖥️
+        run: |
+          npm start > /dev/null 2>&1
+        env:
+          TZ: Asia/Bangkok
+          LOGIN_ONLY: ${{ inputs.login-only && 'true' || '' }}
